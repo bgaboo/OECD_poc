@@ -20,29 +20,48 @@ namespace RedisPerfCountersPOC.Monitoring
         private const string prefix = "Memory";
         
         private PerformanceMonitor Monitor { get; set; }
-        
+
+        private List<PerformanceCounter> PerformanceCounters { get; set; }
+
         public MemoryPerfCounter(PerformanceMonitor monitor)
         {
             Monitor = monitor;
             Name = prefix;
+            PerformanceCounters = new List<PerformanceCounter>();
 
             _countersRecorded = new List<Counter>()
                                             {
-                                                //new Counter("used_memory", System.Diagnostics.PerformanceCounterType.AverageCount64),
-                                                //new Counter("used_memory_rss", System.Diagnostics.PerformanceCounterType.AverageCount64),
-                                                //new Counter("used_memory_peak", System.Diagnostics.PerformanceCounterType.AverageCount64),
-                                                //new Counter("mem_fragmentation_ratio", System.Diagnostics.PerformanceCounterType.RawFraction)
-                                                new Counter("used_memory", System.Diagnostics.PerformanceCounterType.NumberOfItems64),
-                                                new Counter("used_memory_rss", System.Diagnostics.PerformanceCounterType.NumberOfItems64),
-                                                new Counter("used_memory_peak", System.Diagnostics.PerformanceCounterType.NumberOfItems64),
-                                                new Counter("mem_fragmentation_ratio", System.Diagnostics.PerformanceCounterType.NumberOfItems64)
+                                                new Counter("used_memory", PerformanceCounterType.NumberOfItems64),
+                                                new Counter("used_memory_rss", PerformanceCounterType.NumberOfItems64),
+                                                new Counter("used_memory_peak", PerformanceCounterType.NumberOfItems64),
+                                                //new Counter("mem_fragmentation_ratio", PerformanceCounterType.RawFraction)
+                                                new Counter("mem_fragmentation_ratio", PerformanceCounterType.NumberOfItems64)
                                             };
+
+            ////_complementerCounters = new List<Counter>()
+            ////                                {
+            ////                                    new Counter("mem_fragmentation_ratio" + BaseCounterPostfix, PerformanceCounterType.RawBase)
+            ////                                };
+
         }
 
         public override PerformanceCounter GetCounter(string counterName)
         {
-            PerformanceCounter counter = new PerformanceCounter(Monitor.Category, GetCounterName(counterName));
+            PerformanceCounter counter = null;
+            if (PerformanceCounters.Any(p => p.CounterName == GetCounterName(counterName)))
+            {
+                counter = PerformanceCounters.FirstOrDefault(p => p.CounterName == GetCounterName(counterName));
+            }
+            else
+            {
+                counter = new PerformanceCounter(Monitor.Category, GetCounterName(counterName), false);
+            }
             return counter;
+        }
+
+        public override PerformanceCounter GetBaseCounter(string counterName)
+        {
+            return GetCounter(counterName + BaseCounterPostfix);
         }
 
         public override CounterCreationDataCollection InitCounters()
@@ -50,6 +69,12 @@ namespace RedisPerfCountersPOC.Monitoring
             CounterCreationDataCollection perfCounters = new CounterCreationDataCollection();
 
             foreach (Counter c in CountersRecorded)
+            {
+                CounterCreationData counter = new CounterCreationData(GetCounterName(c.Name), GetCounterHelp(c.Name), c.Type);
+                perfCounters.Add(counter);
+            }
+
+            foreach (Counter c in _complementerCounters)
             {
                 CounterCreationData counter = new CounterCreationData(GetCounterName(c.Name), GetCounterHelp(c.Name), c.Type);
                 perfCounters.Add(counter);

@@ -16,6 +16,8 @@ namespace RedisPerfCountersPOC
             //CreateTestCategory();
             InfoResult result =  ExternalCommand.CallRedis();
 
+            PerformanceMonitor monitor = new PerformanceMonitor("Redis Category");
+            monitor.RecordMetrics(result);
         }
 
         private static void CreateTestCategory()

@@ -72,7 +72,9 @@ namespace RedisPerfCountersPOC.Monitoring
         {
             foreach (InfoRegion region in result.Regions)
             {
-                RecordMetrics(region, PerfCounterTypes.FirstOrDefault(p => p.Name.ToUpper() == region.Name.ToUpper()));
+                PerfCounterBase perfCounterType = PerfCounterTypes.FirstOrDefault(p => p.Name.ToUpper() == region.Name.ToUpper());
+                if (perfCounterType != null)
+                    RecordMetrics(region, perfCounterType);
             }
         }
 
@@ -83,7 +85,7 @@ namespace RedisPerfCountersPOC.Monitoring
             if (perfCounterType == null)
                 throw new ArgumentNullException("perfCounterType");
 
-            if (perfCounterType.Name.ToUpper() == region.Name.ToUpper())
+            if (perfCounterType.Name.ToUpper() != region.Name.ToUpper())
                 throw new ArgumentException("Argument mismatch!");
 
             foreach (Counter counter in perfCounterType.CountersRecorded)
@@ -103,8 +105,24 @@ namespace RedisPerfCountersPOC.Monitoring
             PerformanceCounter perfCounter = perfCounterType.GetCounter(counter.Name);
             if (perfCounter != null)
             {
-                perfCounter.RawValue = Convert.ToInt64(entry.Item2);
-                retVal = true;
+                switch (perfCounter.CounterType)
+                {
+                    case PerformanceCounterType.NumberOfItems64:
+                        perfCounter.RawValue = Convert.ToInt64(entry.Item2);
+                        retVal = true;
+                        break;
+                    //case PerformanceCounterType.RawFraction:
+                    //    PerformanceCounter perfCounterBase = perfCounterType.GetBaseCounter(counter.Name);
+                    //    if (perfCounterBase != null)
+                    //    {
+                    //        perfCounterBase.RawValue = 100;
+                    //        perfCounter.RawValue = Convert.ToInt64(Convert.ToDecimal(entry.Item2) * 100);
+                    //        retVal = true;
+                    //    }
+                    //    break;
+                    default:
+                        throw new NotImplementedException();
+                }
             }
 
             return retVal;
