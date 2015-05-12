@@ -44,10 +44,15 @@
     <Compile Include="External\ExternalCommand.cs" />
     <Compile Include="InfoRegion.cs" />
     <Compile Include="InfoResult.cs" />
+    <Compile Include="Monitoring\ClientsPerfCounter.cs" />
+    <Compile Include="Monitoring\CommandstatsPerfCounter.cs" />
     <Compile Include="Monitoring\Counter.cs" />
+    <Compile Include="Monitoring\CpuPerfCounter.cs" />
+    <Compile Include="Monitoring\KeyspacePerfCounter.cs" />
     <Compile Include="Monitoring\MemoryPerfCounter.cs" />
     <Compile Include="Monitoring\PerfCounterBase.cs" />
     <Compile Include="Monitoring\PerformanceMonitor.cs" />
+    <Compile Include="Monitoring\StatsPerfCounter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

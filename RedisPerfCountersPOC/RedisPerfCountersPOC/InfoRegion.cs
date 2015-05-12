@@ -12,6 +12,10 @@ namespace RedisPerfCountersPOC
 
         public List<Tuple<string, string>> Entries = new List<Tuple<string, string>>();
 
+        public InfoRegion()
+        {
+        }
+
         public InfoRegion(string region)
         {
             int indexOfCrLf = region.IndexOf("\r\n");

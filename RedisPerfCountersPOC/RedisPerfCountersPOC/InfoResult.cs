@@ -12,6 +12,10 @@ namespace RedisPerfCountersPOC
 
         public List<InfoRegion> Regions = new List<InfoRegion>();
 
+        public InfoResult()
+        {
+        }
+
         public InfoResult(string result)
         {
             this.result = result;

@@ -33,6 +33,11 @@ namespace RedisPerfCountersPOC.Monitoring
 
             PerfCounterTypes = new List<PerfCounterBase>();
             PerfCounterTypes.Add(new MemoryPerfCounter(this));
+            PerfCounterTypes.Add(new StatsPerfCounter(this));
+            PerfCounterTypes.Add(new ClientsPerfCounter(this));
+            PerfCounterTypes.Add(new CpuPerfCounter(this));
+            PerfCounterTypes.Add(new CommandstatsPerfCounter(this));
+            PerfCounterTypes.Add(new KeyspacePerfCounter(this));
 
             CreateCategory(forceRecreate);
         }
@@ -68,17 +73,19 @@ namespace RedisPerfCountersPOC.Monitoring
             return counter;
         }
 
-        public void RecordMetrics(InfoResult result)
+        public InfoResult RecordMetrics(InfoResult result)
         {
+            InfoResult collectedMetrics = new InfoResult();
             foreach (InfoRegion region in result.Regions)
             {
                 PerfCounterBase perfCounterType = PerfCounterTypes.FirstOrDefault(p => p.Name.ToUpper() == region.Name.ToUpper());
                 if (perfCounterType != null)
-                    RecordMetrics(region, perfCounterType);
+                    RecordMetrics(region, perfCounterType, ref collectedMetrics);
             }
+            return collectedMetrics;
         }
 
-        private void RecordMetrics(InfoRegion region, PerfCounterBase perfCounterType)
+        private void RecordMetrics(InfoRegion region, PerfCounterBase perfCounterType, ref InfoResult collectedMetrics)
         {
             if (region == null)
                 throw new ArgumentNullException("region");
@@ -88,43 +95,55 @@ namespace RedisPerfCountersPOC.Monitoring
             if (perfCounterType.Name.ToUpper() != region.Name.ToUpper())
                 throw new ArgumentException("Argument mismatch!");
 
-            foreach (Counter counter in perfCounterType.CountersRecorded)
+            List<Tuple<string, string>> collectedEntries = new List<Tuple<string, string>>();
+            
+            List<Tuple<Counter, Tuple<string, string>>> countersToBeRecorded = perfCounterType.GetCountersToBeRecorded(region);
+
+            foreach (Tuple<Counter, Tuple<string, string>> counterToBeRecorded in countersToBeRecorded)
             {
-                Tuple<string, string> entry = region.Entries.FirstOrDefault(e => e.Item1.ToUpper() == counter.Name.ToUpper());
-                if (entry != null)
-                {
-                    SaveMetric(perfCounterType, counter, entry);
-                }
+                SaveMetric(perfCounterType, counterToBeRecorded.Item1, counterToBeRecorded.Item2);
+                collectedEntries.Add(counterToBeRecorded.Item2);
             }
+
+            InfoRegion collectedRegoin = new InfoRegion();
+            collectedRegoin.Name = region.Name;
+            collectedRegoin.Entries.AddRange(collectedEntries);
+            collectedMetrics.Regions.Add(collectedRegoin);
         }
 
         private bool SaveMetric(PerfCounterBase perfCounterType, Counter counter, Tuple<string, string> entry)
         {
             bool retVal = false;
 
-            PerformanceCounter perfCounter = perfCounterType.GetCounter(counter.Name);
-            if (perfCounter != null)
+            try
             {
-                switch (perfCounter.CounterType)
+                PerformanceCounter perfCounter = perfCounterType.GetCounter(counter.Name);
+                if (perfCounter != null)
                 {
-                    case PerformanceCounterType.NumberOfItems64:
-                        perfCounter.RawValue = Convert.ToInt64(entry.Item2);
-                        retVal = true;
-                        break;
-                    //case PerformanceCounterType.RawFraction:
-                    //    PerformanceCounter perfCounterBase = perfCounterType.GetBaseCounter(counter.Name);
-                    //    if (perfCounterBase != null)
-                    //    {
-                    //        perfCounterBase.RawValue = 100;
-                    //        perfCounter.RawValue = Convert.ToInt64(Convert.ToDecimal(entry.Item2) * 100);
-                    //        retVal = true;
-                    //    }
-                    //    break;
-                    default:
-                        throw new NotImplementedException();
+                    switch (perfCounter.CounterType)
+                    {
+                        case PerformanceCounterType.NumberOfItems64:
+                            perfCounter.RawValue = Convert.ToInt64(entry.Item2);
+                            retVal = true;
+                            break;
+                        //case PerformanceCounterType.RawFraction:
+                        //    PerformanceCounter perfCounterBase = perfCounterType.GetBaseCounter(counter.Name);
+                        //    if (perfCounterBase != null)
+                        //    {
+                        //        perfCounterBase.RawValue = 100;
+                        //        perfCounter.RawValue = Convert.ToInt64(Convert.ToDecimal(entry.Item2) * 100);
+                        //        retVal = true;
+                        //    }
+                        //    break;
+                        default:
+                            throw new NotImplementedException();
+                    }
                 }
             }
-
+            catch
+            {
+                // DEVNOTE: log the exception but do not rethrow
+            }
             return retVal;
         }
     }
